@@ -180,7 +180,7 @@ class DatabaseSeeder:
 
                 self.cursor.execute(
                     """INSERT INTO customer_addresses
-                       (customer_id, country, state, city, street, floor, appartment_no, address_type_id, is_default)
+                       (customer_id, country, state, city, street, floor, apartment_no, address_type_id, is_default)
                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (customer_id, country, state, city, street, floor, apartment_no, address_type_id, is_default)
                 )
