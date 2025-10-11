@@ -103,12 +103,12 @@ class DatabaseSeeder:
         self.conn.commit()
         print("Seeded address_types")
 
-    def seed_customers(self, count=500):
-        """Seed customers with realistic data"""
+    def seed_users(self, count=500):
+        """Seed users table"""
         existing_emails = set()
 
         # Get existing emails to avoid duplicates
-        self.cursor.execute("SELECT email FROM customers")
+        self.cursor.execute("SELECT email FROM users")
         for (email,) in self.cursor.fetchall():
             existing_emails.add(email)
 
@@ -120,14 +120,43 @@ class DatabaseSeeder:
             attempts += 1
             first_name = random.choice(self.first_names)
             last_name = random.choice(self.last_names)
-            name = f"{first_name} {last_name}"
 
-            # Generate unique email
             email_domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']
-            email = f"{first_name.lower()}.{last_name.lower()}{random.randint(1, 999)}@{random.choice(email_domains)}"
+            email = f"{first_name.lower()}.{last_name.lower()}{random.randint(1, 9999)}@{random.choice(email_domains)}"
 
             if email in existing_emails:
                 continue
+
+            password_hash = uuid.uuid4().hex  # fake password hash
+            created_at = self.generate_date_range(2020, 2025)
+
+            try:
+                self.cursor.execute(
+                    "INSERT INTO users (email, password_hash, created_at) VALUES (%s, %s, %s)",
+                    (email, password_hash, created_at)
+                )
+                existing_emails.add(email)
+                successful_inserts += 1
+            except mysql.connector.IntegrityError:
+                continue
+
+        self.conn.commit()
+        print(f"Seeded {successful_inserts} users")
+
+
+    def seed_customers(self):
+        """Seed customers linked to users"""
+        self.cursor.execute("SELECT user_id, email FROM users")
+        user_data = self.cursor.fetchall()
+        used_user_ids = set()
+
+        for user_id, email in user_data:
+            if user_id in used_user_ids:
+                continue
+
+            first_name = random.choice(self.first_names)
+            last_name = random.choice(self.last_names)
+            name = f"{first_name} {last_name}"
 
             # Generate phone numbers for different countries
             country_phones = {
@@ -139,22 +168,19 @@ class DatabaseSeeder:
                 'Australia': f"+61-{random.randint(2, 9)}-{random.randint(10000000, 99999999)}",
                 'Japan': f"+81-{random.randint(3, 9)}-{random.randint(10000000, 99999999)}"
             }
-
             phone = random.choice(list(country_phones.values()))
-            created_at = self.generate_date_range(2022, 2024)
+            created_at = self.generate_date_range(2020, 2025)
 
-            try:
-                self.cursor.execute(
-                    "INSERT INTO customers (name, email, phone, created_at) VALUES (%s, %s, %s, %s)",
-                    (name, email, phone, created_at)
-                )
-                existing_emails.add(email)
-                successful_inserts += 1
-            except mysql.connector.IntegrityError:
-                continue  # Try again with different data
+            self.cursor.execute(
+                "INSERT INTO customers (user_id, name, phone, created_at) VALUES (%s, %s, %s, %s)",
+                (user_id, name, phone, created_at)
+            )
+
+            used_user_ids.add(user_id)
 
         self.conn.commit()
-        print(f"Seeded {successful_inserts} customers")
+        print(f"Seeded {len(used_user_ids)} customers")
+
 
     def seed_customer_addresses(self):
         """Seed customer addresses"""
@@ -254,9 +280,6 @@ class DatabaseSeeder:
         self.cursor.execute("SELECT brand_id FROM brands")
         brand_ids = [row[0] for row in self.cursor.fetchall()]
 
-        self.cursor.execute("SELECT category_id FROM product_categories")
-        category_ids = [row[0] for row in self.cursor.fetchall()]
-
         product_names = [
             'iPhone 15 Pro', 'MacBook Air M2', 'Samsung Galaxy S24', 'Dell XPS 13', 'Sony WH-1000XM5',
             'Nike Air Max 270', 'Adidas Ultraboost 22', 'IKEA Billy Bookshelf', 'H&M Cotton T-Shirt',
@@ -282,12 +305,11 @@ class DatabaseSeeder:
             name = f"{random.choice(product_names)} - Model {random.randint(1000, 9999)}"
             description = random.choice(descriptions)
             brand_id = random.choice(brand_ids)
-            category_id = random.choice(category_ids)
-            created_at = self.generate_date_range(2022, 2024)
+            created_at = self.generate_date_range(2020, 2025)
 
             self.cursor.execute(
-                "INSERT INTO products (name, description, brand_id, category_id, created_at) VALUES (%s, %s, %s, %s, %s)",
-                (name, description, brand_id, category_id, created_at)
+                "INSERT INTO products (name, description, brand_id, created_at) VALUES (%s, %s, %s, %s)",
+                (name, description, brand_id, created_at)
             )
 
         self.conn.commit()
@@ -403,13 +425,12 @@ class DatabaseSeeder:
 
                 existing_skus.add(sku)
                 unit_price = round(random.uniform(9.99, 999.99), 2)
-                quantity_in_stock = random.randint(0, 500)
-                created_at = self.generate_date_range(2022, 2024)
+                created_at = self.generate_date_range(2020, 2025)
 
                 self.cursor.execute(
-                    """INSERT INTO product_variants (product_id, sku, unit_price, quantity_in_stock, created_at)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (product_id, sku, unit_price, quantity_in_stock, created_at)
+                    """INSERT INTO product_variants (product_id, sku, unit_price, created_at)
+                       VALUES (%s, %s, %s, %s)""",
+                    (product_id, sku, unit_price, created_at)
                 )
                 variant_id = self.cursor.lastrowid
 
@@ -431,18 +452,22 @@ class DatabaseSeeder:
 
     def seed_inventory_levels(self):
         """Seed inventory levels"""
-        self.cursor.execute("SELECT variant_id, quantity_in_stock FROM product_variants")
+        self.cursor.execute("SELECT variant_id FROM product_variants")
         variants = self.cursor.fetchall()
 
-        for variant_id, stock_qty in variants:
+        for (variant_id,) in variants:
+            quantity_in_stock = random.randint(0, 400)
+            created_at = self.generate_date_range(2020, 2025)
+
             self.cursor.execute(
                 """INSERT INTO inventory_levels (variant_id, quantity_in_stock, created_at)
-                   VALUES (%s, %s, %s)""",
-                (variant_id, stock_qty, self.generate_date_range(2022, 2024))
+                VALUES (%s, %s, %s)""",
+                (variant_id, quantity_in_stock, created_at)
             )
 
         self.conn.commit()
         print("Seeded inventory_levels")
+
 
     def seed_order_statuses(self):
         """Seed order statuses"""
@@ -507,7 +532,12 @@ class DatabaseSeeder:
         self.cursor.execute("SELECT status_id FROM payment_statuses")
         payment_status_ids = [row[0] for row in self.cursor.fetchall()]
 
-        self.cursor.execute("SELECT variant_id, unit_price FROM product_variants WHERE quantity_in_stock > 0")
+        self.cursor.execute("""
+            SELECT pv.variant_id, pv.unit_price
+            FROM product_variants pv
+            JOIN inventory_levels il ON pv.variant_id = il.variant_id
+            WHERE il.quantity_in_stock > 0
+        """)
         available_variants = self.cursor.fetchall()
 
         for _ in range(count):
@@ -522,7 +552,7 @@ class DatabaseSeeder:
             address_id = random.choice(customer_addresses)
 
             status_id = random.choice(order_status_ids)
-            created_at = self.generate_date_range(2022, 2024)
+            created_at = self.generate_date_range(2020, 2025)
 
             # Create order
             self.cursor.execute(
@@ -598,10 +628,8 @@ class DatabaseSeeder:
         print(f"Seeded {count} orders with related data")
 
     def run_all_seeds(self):
-        """Run all seeding operations"""
         print("Starting database seeding...")
 
-        # Clean database if requested
         if self.clean_start:
             self.clean_database()
 
@@ -611,8 +639,9 @@ class DatabaseSeeder:
         self.seed_payment_methods()
         self.seed_payment_statuses()
 
-        # Customer data
-        self.seed_customers(500)
+        # User + customer data
+        self.seed_users(500)
+        self.seed_customers()
         self.seed_customer_addresses()
 
         # Product catalog
