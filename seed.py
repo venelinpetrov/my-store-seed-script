@@ -533,9 +533,11 @@ class DatabaseSeeder:
         payment_status_ids = [row[0] for row in self.cursor.fetchall()]
 
         self.cursor.execute("""
-            SELECT pv.variant_id, pv.unit_price
+            SELECT pv.variant_id, pv.unit_price, p.name AS product_name, pv.sku, b.name AS brand_name
             FROM product_variants pv
             JOIN inventory_levels il ON pv.variant_id = il.variant_id
+            JOIN products p ON p.product_id = pv.product_id
+            JOIN brands b ON b.brand_id = p.brand_id
             WHERE il.quantity_in_stock > 0
         """)
         available_variants = self.cursor.fetchall()
@@ -568,14 +570,14 @@ class DatabaseSeeder:
 
             selected_variants = random.sample(available_variants, min(num_items, len(available_variants)))
 
-            for variant_id, variant_price in selected_variants:
+            for variant_id, variant_price, product_name, sku, brand_name in selected_variants:
                 quantity = random.randint(1, 3)
                 unit_price = variant_price
 
                 self.cursor.execute(
-                    """INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
-                       VALUES (%s, %s, %s, %s)""",
-                    (order_id, variant_id, quantity, unit_price)
+                    """INSERT INTO order_items (order_id, variant_id, quantity, product_name, sku, unit_price, brand_name)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (order_id, variant_id, quantity, product_name, sku, unit_price, brand_name)
                 )
 
                 order_total += Decimal(str(unit_price)) * quantity
