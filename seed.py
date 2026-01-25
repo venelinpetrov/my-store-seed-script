@@ -129,11 +129,12 @@ class DatabaseSeeder:
 
             password_hash = uuid.uuid4().hex  # fake password hash
             created_at = self.generate_date_range(2020, 2025)
+            token_version = 0
 
             try:
                 self.cursor.execute(
-                    "INSERT INTO users (email, password_hash, created_at) VALUES (%s, %s, %s)",
-                    (email, password_hash, created_at)
+                    "INSERT INTO users (email, password_hash, created_at, token_version) VALUES (%s, %s, %s, %s)",
+                    (email, password_hash, created_at, token_version)
                 )
                 existing_emails.add(email)
                 successful_inserts += 1
