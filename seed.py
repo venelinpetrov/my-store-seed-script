@@ -61,7 +61,7 @@ class DatabaseSeeder:
             'product_tags', 'product_to_categories', 'variant_option_values',
             'variant_options', 'products', 'tags', 'brands', 'product_categories',
             'customer_addresses', 'customers', 'payment_statuses', 'payment_methods',
-            'order_statuses', 'address_types'
+            'order_statuses', 'address_types', 'roles'
         ]
 
         # Disable foreign key checks temporarily
@@ -88,6 +88,24 @@ class DatabaseSeeder:
         days_between = time_between.days
         random_days = random.randrange(days_between)
         return start_date + timedelta(days=random_days)
+
+    def seed_roles(self):
+        """Seed roles"""
+        roles = [
+            ('ADMIN', 'Administrator with full system access'),
+            ('USER', 'Regular user with standard permissions')
+        ]
+
+        for name, description in roles:
+            try:
+                self.cursor.execute(
+                    "INSERT INTO roles (name, description) VALUES (%s, %s)",
+                    (name, description)
+                )
+            except mysql.connector.IntegrityError:
+                pass  # Skip duplicates
+        self.conn.commit()
+        print("Seeded roles")
 
     def seed_address_types(self):
         """Seed address types"""
@@ -473,7 +491,7 @@ class DatabaseSeeder:
 
     def seed_order_statuses(self):
         """Seed order statuses"""
-        statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']
+        statuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED']
 
         for status in statuses:
             try:
@@ -638,6 +656,7 @@ class DatabaseSeeder:
             self.clean_database()
 
         # Basic reference data
+        self.seed_roles()
         self.seed_address_types()
         self.seed_order_statuses()
         self.seed_payment_methods()
@@ -677,7 +696,7 @@ if __name__ == "__main__":
         'user': 'root',
         'password': '0000',
         'database': 'my_store',
-        'port': 3306
+        'port': 3307
     }
 
     seeder = None
