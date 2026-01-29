@@ -5,12 +5,13 @@ from decimal import Decimal
 import uuid
 
 class DatabaseSeeder:
-    def __init__(self, host, user, password, database, clean_start=False):
+    def __init__(self, host, user, password, database, port, clean_start=False):
         self.conn = mysql.connector.connect(
             host=host,
             user=user,
             password=password,
-            database=database
+            database=database,
+            port=port
         )
         self.cursor = self.conn.cursor()
         self.clean_start = clean_start
@@ -675,7 +676,8 @@ if __name__ == "__main__":
         'host': 'localhost',
         'user': 'root',
         'password': '0000',
-        'database': 'my_store'
+        'database': 'my_store',
+        'port': 3306
     }
 
     seeder = None
