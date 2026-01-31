@@ -586,7 +586,7 @@ class DatabaseSeeder:
 
             # Add order items (1-5 items per order)
             num_items = random.randint(1, 5)
-            order_total = Decimal('0.00')
+            subtotal = Decimal('0.00')
 
             selected_variants = random.sample(available_variants, min(num_items, len(available_variants)))
 
@@ -600,22 +600,34 @@ class DatabaseSeeder:
                     (order_id, variant_id, quantity, product_name, sku, unit_price, brand_name)
                 )
 
-                order_total += Decimal(str(unit_price)) * quantity
+                subtotal += Decimal(str(unit_price)) * quantity
+
+            # Calculate order totals
+            tax = round(Decimal(str(random.uniform(5, 20))), 2)
+            shipping_cost = round(Decimal(str(random.uniform(5, 50))), 2)
+            total = subtotal + tax + shipping_cost
+
+            # Update order with calculated totals
+            self.cursor.execute(
+                """UPDATE orders
+                   SET subtotal = %s, tax = %s, shipping_cost = %s, total = %s
+                   WHERE order_id = %s""",
+                (subtotal, tax, shipping_cost, total, order_id)
+            )
 
             # Create invoice
-            tax = order_total * Decimal('0.08')  # 8% tax
-            discount = Decimal(str(random.uniform(0, 50))) if random.random() < 0.3 else Decimal('0.00')
-            invoice_total = order_total + tax - discount
+            # discount = Decimal(str(random.uniform(0, 50))) if random.random() < 0.3 else Decimal('0.00')
+            invoice_total = total
             payment_total = invoice_total if random.random() < 0.9 else Decimal('0.00')  # 90% paid
 
             due_date = created_at + timedelta(days=30)
             payment_date = created_at + timedelta(days=random.randint(1, 15)) if payment_total > 0 else None
 
             self.cursor.execute(
-                """INSERT INTO invoices (order_id, customer_id, invoice_total, tax, discount,
+                """INSERT INTO invoices (order_id, customer_id, invoice_total, tax,
                    payment_total, invoice_date, due_date, payment_date)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (order_id, customer_id, invoice_total, tax, discount, payment_total,
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (order_id, customer_id, invoice_total, tax, payment_total,
                  created_at, due_date, payment_date)
             )
             invoice_id = self.cursor.lastrowid
