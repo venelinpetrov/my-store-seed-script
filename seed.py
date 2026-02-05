@@ -527,7 +527,7 @@ class DatabaseSeeder:
 
     def seed_payment_statuses(self):
         """Seed payment statuses"""
-        statuses = ['Pending', 'Completed', 'Failed', 'Refunded', 'Cancelled']
+        statuses = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELLED', 'REFUNDED']
 
         for status in statuses:
             try:
