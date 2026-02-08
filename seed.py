@@ -637,10 +637,34 @@ class DatabaseSeeder:
                 method_id = random.choice(payment_method_ids)
                 status_id = random.choice(payment_status_ids)
 
+                # Generate payment tracking data
+                attempt_number = random.randint(1, 3) if random.random() < 0.2 else 1  # 20% chance of retries
+
+                # Generate failure data for failed payments
+                failure_reason = None
+                failure_code = None
+                if status_id == 3:
+                    # Using Stripe's actual decline codes
+                    failure_data = [
+                        ('Your card has insufficient funds.', 'insufficient_funds'),
+                        ('Your card was declined.', 'generic_decline'),
+                        ('Your card does not support this type of purchase.', 'card_not_supported'),
+                        ('Your card has expired.', 'expired_card'),
+                        ('Your card\'s security code is incorrect.', 'incorrect_cvc'),
+                        ('The payment was declined by your bank.', 'issuer_not_available'),
+                        ('The payment was blocked due to suspected fraud.', 'fraudulent'),
+                        ('Your card number is incorrect.', 'incorrect_number'),
+                        ('An error occurred while processing your card.', 'processing_error'),
+                        ('The payment was declined for an unknown reason.', 'card_declined')
+                    ]
+                    failure_reason, failure_code = random.choice(failure_data)
+
                 self.cursor.execute(
-                    """INSERT INTO payments (invoice_id, amount, payment_date, method_id, status_id)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (invoice_id, payment_total, payment_date, method_id, status_id)
+                    """INSERT INTO payments (invoice_id, amount, payment_date, method_id, status_id,
+                       attempt_number, failure_reason, failure_code)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (invoice_id, payment_total, payment_date, method_id, status_id,
+                     attempt_number, failure_reason, failure_code)
                 )
 
             # Create shipment if order is shipped/delivered
