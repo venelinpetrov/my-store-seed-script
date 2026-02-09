@@ -616,7 +616,7 @@ class DatabaseSeeder:
             )
 
             # Create invoice
-            # discount = Decimal(str(random.uniform(0, 50))) if random.random() < 0.3 else Decimal('0.00')
+            discount = Decimal(str(random.uniform(0, 50))) if random.random() < 0.3 else Decimal('0.00')
             invoice_total = total
             payment_total = invoice_total if random.random() < 0.9 else Decimal('0.00')  # 90% paid
 
@@ -624,10 +624,10 @@ class DatabaseSeeder:
             payment_date = created_at + timedelta(days=random.randint(1, 15)) if payment_total > 0 else None
 
             self.cursor.execute(
-                """INSERT INTO invoices (order_id, customer_id, invoice_total, tax,
+                """INSERT INTO invoices (order_id, customer_id, invoice_total, tax, discount,
                    payment_total, invoice_date, due_date, payment_date)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                (order_id, customer_id, invoice_total, tax, payment_total,
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (order_id, customer_id, invoice_total, tax, discount, payment_total,
                  created_at, due_date, payment_date)
             )
             invoice_id = self.cursor.lastrowid
